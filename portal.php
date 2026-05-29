@@ -43,8 +43,8 @@ if ($isLoggedIn && $_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['login
     if (empty($message)) {
         try {
             $uploadDir = __DIR__ . '/uploads';
-            if (!is_dir($uploadDir)) {
-                mkdir($uploadDir, 0755, true);
+            if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
+                throw new RuntimeException('No se pudo crear el directorio de uploads: ' . $uploadDir);
             }
 
             $errors = [];
@@ -160,6 +160,11 @@ function saveUploadedImage(string $fieldName, string $currentValue, string $uplo
     }
 
     $file = $_FILES[$fieldName];
+    if (!is_uploaded_file($file['tmp_name'])) {
+        $error = 'El archivo temporal no es un archivo subido válido.';
+        return $currentValue;
+    }
+
     $finfo = new finfo(FILEINFO_MIME_TYPE);
     $mime = $finfo->file($file['tmp_name']);
     $allowed = [
@@ -180,9 +185,15 @@ function saveUploadedImage(string $fieldName, string $currentValue, string $uplo
     $fileName = sprintf('%s_%s.%s', $fieldName, uniqid(), $extension);
     $destination = rtrim($uploadDir, '/\\') . DIRECTORY_SEPARATOR . $fileName;
 
-    if (!move_uploaded_file($file['tmp_name'], $destination) && !copy($file['tmp_name'], $destination)) {
-        $error = 'No se pudo mover el archivo subido al directorio de destino.';
-        return $currentValue;
+    if (!move_uploaded_file($file['tmp_name'], $destination)) {
+        $lastMove = error_get_last();
+        if (!copy($file['tmp_name'], $destination)) {
+            $lastCopy = error_get_last();
+            $moveMsg = $lastMove['message'] ?? 'sin mensaje';
+            $copyMsg = $lastCopy['message'] ?? 'sin mensaje';
+            $error = 'No se pudo mover el archivo subido al directorio de destino. move_uploaded_file: ' . $moveMsg . ' | copy: ' . $copyMsg;
+            return $currentValue;
+        }
     }
 
     return 'uploads/' . $fileName;
