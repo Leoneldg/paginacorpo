@@ -41,20 +41,21 @@ if ($isLoggedIn && $_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['login
     }
 
     if (empty($message)) {
-        $uploadDir = __DIR__ . '/uploads';
-    if (!is_dir($uploadDir)) {
-        mkdir($uploadDir, 0755, true);
-    }
+        try {
+            $uploadDir = __DIR__ . '/uploads';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
 
-    $currentVideoSrc = $settings['video_src'] ?? 'videos/torres.mp4';
-    $videoSrc = saveUploadedVideo('video_file', $currentVideoSrc, $uploadDir);
-    saveSetting($pdo, 'video_src', $videoSrc);
+            $currentVideoSrc = $settings['video_src'] ?? 'videos/torres.mp4';
+            $videoSrc = saveUploadedVideo('video_file', $currentVideoSrc, $uploadDir);
+            saveSetting($pdo, 'video_src', $videoSrc);
 
-    $currentLogo = $settings['logo_image'] ?? 'img/img/logocorpo.png';
-    $logoImage = saveUploadedImage('logo_image_file', $currentLogo, $uploadDir);
-    saveSetting($pdo, 'logo_image', $logoImage);
+            $currentLogo = $settings['logo_image'] ?? 'img/img/logocorpo.png';
+            $logoImage = saveUploadedImage('logo_image_file', $currentLogo, $uploadDir);
+            saveSetting($pdo, 'logo_image', $logoImage);
 
-    $carouselDefaults = [
+            $carouselDefaults = [
         1 => [
             'image' => 'img/img/fundasalud.jpg',
             'title' => 'First slide label',
@@ -85,6 +86,9 @@ if ($isLoggedIn && $_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['login
 
     $message = 'Contenido actualizado correctamente.';
     $settings = getSettings($pdo);
+        } catch (PDOException $e) {
+            $message = 'Error al guardar el contenido: ' . $e->getMessage();
+        }
     }
 }
 
