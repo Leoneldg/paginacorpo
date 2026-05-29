@@ -48,11 +48,19 @@ if ($isLoggedIn && $_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['login
             }
 
             $currentVideoSrc = $settings['video_src'] ?? 'videos/torres.mp4';
-            $videoSrc = saveUploadedVideo('video_file', $currentVideoSrc, $uploadDir);
+            $videoError = '';
+            $videoSrc = saveUploadedVideo('video_file', $currentVideoSrc, $uploadDir, $videoError);
+            if ($videoError && empty($message)) {
+                $message = $videoError;
+            }
             saveSetting($pdo, 'video_src', $videoSrc);
 
             $currentLogo = $settings['logo_image'] ?? 'img/img/logocorpo.png';
-            $logoImage = saveUploadedImage('logo_image_file', $currentLogo, $uploadDir);
+            $logoError = '';
+            $logoImage = saveUploadedImage('logo_image_file', $currentLogo, $uploadDir, $logoError);
+            if ($logoError && empty($message)) {
+                $message = $logoError;
+            }
             saveSetting($pdo, 'logo_image', $logoImage);
 
             $carouselDefaults = [
@@ -77,7 +85,11 @@ if ($isLoggedIn && $_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['login
         $slideTitle = trim($_POST["carousel_{$slide}_title"] ?? $carouselDefaults[$slide]['title']);
         $slideDescription = trim($_POST["carousel_{$slide}_description"] ?? $carouselDefaults[$slide]['description']);
         $currentCarouselImage = $settings["carousel_{$slide}_image"] ?? $carouselDefaults[$slide]['image'];
-        $carouselImage = saveUploadedImage("carousel_image_{$slide}", $currentCarouselImage, $uploadDir);
+        $slideError = '';
+        $carouselImage = saveUploadedImage("carousel_image_{$slide}", $currentCarouselImage, $uploadDir, $slideError);
+        if ($slideError && empty($message)) {
+            $message = $slideError;
+        }
 
         saveSetting($pdo, "carousel_{$slide}_title", $slideTitle);
         saveSetting($pdo, "carousel_{$slide}_description", $slideDescription);
@@ -107,9 +119,36 @@ function oldValue(array $data, string $key, string $default = ''): string
     return htmlspecialchars($data[$key] ?? $default, ENT_QUOTES, 'UTF-8');
 }
 
-function saveUploadedImage(string $fieldName, string $currentValue, string $uploadDir): string
+function getUploadErrorMessage(int $errorCode): string
 {
-    if (!isset($_FILES[$fieldName]) || $_FILES[$fieldName]['error'] !== UPLOAD_ERR_OK) {
+    switch ($errorCode) {
+        case UPLOAD_ERR_INI_SIZE:
+        case UPLOAD_ERR_FORM_SIZE:
+            return 'El archivo excede el tamaño máximo permitido por el servidor o el formulario.';
+        case UPLOAD_ERR_PARTIAL:
+            return 'La subida se interrumpió antes de completarse.';
+        case UPLOAD_ERR_NO_FILE:
+            return 'No se seleccionó ningún archivo.';
+        case UPLOAD_ERR_NO_TMP_DIR:
+            return 'Falta el directorio temporal en el servidor.';
+        case UPLOAD_ERR_CANT_WRITE:
+            return 'No se pudo escribir el archivo en el disco.';
+        case UPLOAD_ERR_EXTENSION:
+            return 'La subida fue detenida por una extensión de PHP.';
+        default:
+            return 'Error desconocido al subir el archivo.';
+    }
+}
+
+function saveUploadedImage(string $fieldName, string $currentValue, string $uploadDir, ?string &$error = null): string
+{
+    $error = '';
+    if (!isset($_FILES[$fieldName]) || $_FILES[$fieldName]['error'] === UPLOAD_ERR_NO_FILE) {
+        return $currentValue;
+    }
+
+    if ($_FILES[$fieldName]['error'] !== UPLOAD_ERR_OK) {
+        $error = getUploadErrorMessage($_FILES[$fieldName]['error']);
         return $currentValue;
     }
 
@@ -118,12 +157,15 @@ function saveUploadedImage(string $fieldName, string $currentValue, string $uplo
     $mime = $finfo->file($file['tmp_name']);
     $allowed = [
         'image/jpeg' => 'jpg',
+        'image/pjpeg' => 'jpg',
         'image/png' => 'png',
+        'image/x-png' => 'png',
         'image/gif' => 'gif',
         'image/webp' => 'webp',
     ];
 
     if (!isset($allowed[$mime])) {
+        $error = 'Tipo de imagen no permitido: ' . htmlspecialchars($mime, ENT_QUOTES, 'UTF-8');
         return $currentValue;
     }
 
@@ -131,16 +173,23 @@ function saveUploadedImage(string $fieldName, string $currentValue, string $uplo
     $fileName = sprintf('%s_%s.%s', $fieldName, uniqid(), $extension);
     $destination = rtrim($uploadDir, '/\\') . DIRECTORY_SEPARATOR . $fileName;
 
-    if (!move_uploaded_file($file['tmp_name'], $destination)) {
+    if (!move_uploaded_file($file['tmp_name'], $destination) && !copy($file['tmp_name'], $destination)) {
+        $error = 'No se pudo mover el archivo subido al directorio de destino.';
         return $currentValue;
     }
 
     return 'uploads/' . $fileName;
 }
 
-function saveUploadedVideo(string $fieldName, string $currentValue, string $uploadDir): string
+function saveUploadedVideo(string $fieldName, string $currentValue, string $uploadDir, ?string &$error = null): string
 {
-    if (!isset($_FILES[$fieldName]) || $_FILES[$fieldName]['error'] !== UPLOAD_ERR_OK) {
+    $error = '';
+    if (!isset($_FILES[$fieldName]) || $_FILES[$fieldName]['error'] === UPLOAD_ERR_NO_FILE) {
+        return $currentValue;
+    }
+
+    if ($_FILES[$fieldName]['error'] !== UPLOAD_ERR_OK) {
+        $error = getUploadErrorMessage($_FILES[$fieldName]['error']);
         return $currentValue;
     }
 
@@ -154,6 +203,7 @@ function saveUploadedVideo(string $fieldName, string $currentValue, string $uplo
     ];
 
     if (!isset($allowed[$mime])) {
+        $error = 'Tipo de video no permitido: ' . htmlspecialchars($mime, ENT_QUOTES, 'UTF-8');
         return $currentValue;
     }
 
@@ -161,7 +211,8 @@ function saveUploadedVideo(string $fieldName, string $currentValue, string $uplo
     $fileName = sprintf('%s_%s.%s', $fieldName, uniqid(), $extension);
     $destination = rtrim($uploadDir, '/\\') . DIRECTORY_SEPARATOR . $fileName;
 
-    if (!move_uploaded_file($file['tmp_name'], $destination)) {
+    if (!move_uploaded_file($file['tmp_name'], $destination) && !copy($file['tmp_name'], $destination)) {
+        $error = 'No se pudo mover el archivo subido al directorio de destino.';
         return $currentValue;
     }
 
