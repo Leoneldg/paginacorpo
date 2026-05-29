@@ -47,19 +47,21 @@ if ($isLoggedIn && $_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['login
                 mkdir($uploadDir, 0755, true);
             }
 
+            $errors = [];
+
             $currentVideoSrc = $settings['video_src'] ?? 'videos/torres.mp4';
             $videoError = '';
             $videoSrc = saveUploadedVideo('video_file', $currentVideoSrc, $uploadDir, $videoError);
-            if ($videoError && empty($message)) {
-                $message = $videoError;
+            if ($videoError) {
+                $errors[] = $videoError;
             }
             saveSetting($pdo, 'video_src', $videoSrc);
 
             $currentLogo = $settings['logo_image'] ?? 'img/img/logocorpo.png';
             $logoError = '';
             $logoImage = saveUploadedImage('logo_image_file', $currentLogo, $uploadDir, $logoError);
-            if ($logoError && empty($message)) {
-                $message = $logoError;
+            if ($logoError) {
+                $errors[] = $logoError;
             }
             saveSetting($pdo, 'logo_image', $logoImage);
 
@@ -87,8 +89,8 @@ if ($isLoggedIn && $_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['login
         $currentCarouselImage = $settings["carousel_{$slide}_image"] ?? $carouselDefaults[$slide]['image'];
         $slideError = '';
         $carouselImage = saveUploadedImage("carousel_image_{$slide}", $currentCarouselImage, $uploadDir, $slideError);
-        if ($slideError && empty($message)) {
-            $message = $slideError;
+        if ($slideError) {
+            $errors[] = "Slide {$slide}: " . $slideError;
         }
 
         saveSetting($pdo, "carousel_{$slide}_title", $slideTitle);
@@ -96,7 +98,12 @@ if ($isLoggedIn && $_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['login
         saveSetting($pdo, "carousel_{$slide}_image", $carouselImage);
     }
 
-    $message = 'Contenido actualizado correctamente.';
+    if (count($errors) === 0) {
+        $message = 'Contenido actualizado correctamente.';
+    } else {
+        $message = implode(' ', $errors);
+    }
+
     $settings = getSettings($pdo);
         } catch (PDOException $e) {
             $message = 'Error al guardar el contenido: ' . $e->getMessage();
