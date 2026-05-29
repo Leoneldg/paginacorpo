@@ -33,10 +33,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
 $isLoggedIn = isset($_SESSION['user_id']);
 
 if ($isLoggedIn && $_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['login'])) {
-    $pdo = getDatabaseConnection();
-    $settings = getSettings($pdo);
+    try {
+        $pdo = getDatabaseConnection();
+        $settings = getSettings($pdo);
+    } catch (PDOException $e) {
+        $message = 'Error de conexión a la base de datos: ' . $e->getMessage();
+    }
 
-    $uploadDir = __DIR__ . '/uploads';
+    if (empty($message)) {
+        $uploadDir = __DIR__ . '/uploads';
     if (!is_dir($uploadDir)) {
         mkdir($uploadDir, 0755, true);
     }
@@ -80,11 +85,17 @@ if ($isLoggedIn && $_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['login
 
     $message = 'Contenido actualizado correctamente.';
     $settings = getSettings($pdo);
+    }
 }
 
 if ($isLoggedIn) {
-    $pdo = getDatabaseConnection();
-    $settings = getSettings($pdo);
+    try {
+        $pdo = getDatabaseConnection();
+        $settings = getSettings($pdo);
+    } catch (PDOException $e) {
+        $message = 'Error de conexión a la base de datos: ' . $e->getMessage();
+        $settings = [];
+    }
 }
 
 function oldValue(array $data, string $key, string $default = ''): string
