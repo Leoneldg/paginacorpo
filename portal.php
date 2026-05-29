@@ -79,6 +79,7 @@ if ($isLoggedIn && $_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['login
     }
 
     $message = 'Contenido actualizado correctamente.';
+    $settings = getSettings($pdo);
 }
 
 if ($isLoggedIn) {

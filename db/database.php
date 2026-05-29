@@ -33,8 +33,13 @@ function getNewsItems(PDO $pdo): array
 
 function saveSetting(PDO $pdo, string $key, string $value): void
 {
-    $stmt = $pdo->prepare('INSERT INTO `settings` (`key`, `value`) VALUES (:key, :value) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)');
+    $stmt = $pdo->prepare('UPDATE `settings` SET `value` = :value WHERE `key` = :key');
     $stmt->execute([':key' => $key, ':value' => $value]);
+
+    if ($stmt->rowCount() === 0) {
+        $stmt = $pdo->prepare('INSERT INTO `settings` (`key`, `value`) VALUES (:key, :value)');
+        $stmt->execute([':key' => $key, ':value' => $value]);
+    }
 }
 
 function saveNewsItem(PDO $pdo, int $order, string $title, string $description, string $imageUrl): void
