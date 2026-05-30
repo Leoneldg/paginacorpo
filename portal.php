@@ -245,14 +245,78 @@ function saveUploadedVideo(string $fieldName, string $currentValue, string $uplo
     <title>Portal de Administración - CorpoCapital</title>
     <link href="bootstrap-5.3.6-dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { padding: 30px; background: #f5f8ff; }
-        .portal-card { max-width: 1000px; margin: auto; }
-        .form-section { background: #fff; border-radius: .75rem; padding: 24px; box-shadow: 0 12px 30px rgba(0,0,0,.08); }
-        .notice-box { background: #e8f0ff; padding: 16px; margin-bottom: 20px; border-radius: .75rem; }
+        body {
+            min-height: 100vh;
+            margin: 0;
+            background: radial-gradient(circle at top, #e9f0ff 0%, #f7fbff 45%, #ffffff 100%);
+            color: #1f2937;
+        }
+        .portal-card {
+            max-width: 1140px;
+            margin: 0 auto;
+            padding: 24px 16px 48px;
+        }
+        .form-section {
+            background: #ffffff;
+            border-radius: 24px;
+            padding: 28px;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+        }
+        .section-card {
+            background: #f9fbff;
+            border-radius: 18px;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            padding: 22px;
+        }
+        .section-title {
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+            padding-bottom: 0.75rem;
+        }
+        .notice-box {
+            background: #eef5ff;
+            padding: 24px;
+            margin-bottom: 24px;
+            border-radius: 18px;
+            border: 1px solid rgba(59, 130, 246, 0.15);
+        }
+        .notice-box h1 {
+            margin-bottom: 0.75rem;
+        }
+        .alert {
+            border-radius: 18px;
+        }
+        .preview-img {
+            max-width: 180px;
+            max-height: 180px;
+            display: block;
+            border-radius: 16px;
+            object-fit: cover;
+            margin-top: 0.75rem;
+            box-shadow: 0 14px 24px rgba(15, 23, 42, 0.08);
+        }
+        .btn-primary {
+            min-width: 180px;
+        }
+        .file-input-group .form-text {
+            margin-top: 0.35rem;
+        }
+        @media (max-width: 767.98px) {
+            .portal-card {
+                padding: 18px 12px 32px;
+            }
+            .form-section {
+                padding: 20px;
+            }
+            .section-card {
+                padding: 18px;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="portal-card">
+    <div class="container portal-card">
         <?php if (!$isLoggedIn): ?>
             <div class="form-section">
                 <h2 class="h5">Iniciar Sesión</h2>
@@ -283,54 +347,72 @@ function saveUploadedVideo(string $fieldName, string $currentValue, string $uplo
                 <div class="alert alert-success" role="alert"><?= htmlspecialchars($message, ENT_QUOTES, 'UTF-8') ?></div>
             <?php endif; ?>
 
-            <div class="form-section">
+            <div class="form-section section-card">
                 <form method="post" enctype="multipart/form-data">
-                    <div class="mb-4">
-                        <h2 class="h5">Configuración global</h2>
-                        <div class="mb-3">
-                            <label for="video_file" class="form-label">Subir video inicial</label>
-                            <input type="file" class="form-control" id="video_file" name="video_file" accept="video/mp4,video/webm,video/ogg">
-                            <div class="form-text">Carga un archivo de video MP4, WEBM u OGG para el video de inicio.</div>
-                            <?php if (!empty($settings['video_src'])): ?>
-                                <div class="form-text">Actual: <code><?= htmlspecialchars($settings['video_src'], ENT_QUOTES, 'UTF-8') ?></code></div>
-                            <?php endif; ?>
-                        </div>
-                        <div class="mb-3">
-                            <label for="logo_image_file" class="form-label">Subir imagen del logo</label>
-                            <input type="file" class="form-control" id="logo_image_file" name="logo_image_file" accept="image/*">
-                            <div class="form-text">Carga un archivo de imagen para el logo.</div>
-                            <img id="logo_preview" src="" alt="Previsualización del logo" style="max-width: 200px; max-height: 200px; display: none; margin-top: 10px;">
-                            <?php if (!empty($settings['logo_image'])): ?>
-                                <div class="form-text">Actual: <code><?= htmlspecialchars($settings['logo_image'], ENT_QUOTES, 'UTF-8') ?></code></div>
-                            <?php endif; ?>
-                        </div>
+                    <div class="section-title">
+                        <h2 class="h4">Configuración global</h2>
                     </div>
-
-                    <div class="mb-4">
-                        <h2 class="h5">Carrusel</h2>
-                        <?php for ($slide = 1; $slide <= 3; $slide++): ?>
+                    <div class="row g-4 align-items-end">
+                        <div class="col-12 col-lg-6">
                             <div class="mb-3">
-                                <label for="carousel_<?= $slide ?>_title" class="form-label">Título slide <?= $slide ?></label>
-                                <input type="text" class="form-control" id="carousel_<?= $slide ?>_title" name="carousel_<?= $slide ?>_title" value="<?= oldValue($settings, "carousel_{$slide}_title", 'Slide title') ?>">
+                                <label for="video_file" class="form-label">Subir video inicial</label>
+                                <input type="file" class="form-control" id="video_file" name="video_file" accept="video/mp4,video/webm,video/ogg">
+                                <div class="form-text">Carga un archivo de video MP4, WEBM u OGG para el video de inicio.</div>
                             </div>
+                        </div>
+                        <div class="col-12 col-lg-6 file-input-group">
                             <div class="mb-3">
-                                <label for="carousel_<?= $slide ?>_description" class="form-label">Descripción slide <?= $slide ?></label>
-                                <textarea class="form-control" id="carousel_<?= $slide ?>_description" name="carousel_<?= $slide ?>_description" rows="2"><?= oldValue($settings, "carousel_{$slide}_description", 'Descripción del slide.') ?></textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label for="carousel_image_<?= $slide ?>" class="form-label">Subir imagen slide <?= $slide ?></label>
-                                <input type="file" class="form-control" id="carousel_image_<?= $slide ?>" name="carousel_image_<?= $slide ?>" accept="image/*">
-                                <div class="form-text">Carga una imagen para el slide <?= $slide ?> del carrusel.</div>
-                                <img id="carousel_preview_<?= $slide ?>" src="" alt="Previsualización slide <?= $slide ?>" style="max-width: 200px; max-height: 200px; display: none; margin-top: 10px;">
-                                <?php if (!empty($settings["carousel_{$slide}_image"])): ?>
-                                    <div class="form-text">Actual: <code><?= htmlspecialchars($settings["carousel_{$slide}_image"], ENT_QUOTES, 'UTF-8') ?></code></div>
+                                <label for="logo_image_file" class="form-label">Subir imagen del logo</label>
+                                <input type="file" class="form-control" id="logo_image_file" name="logo_image_file" accept="image/*">
+                                <div class="form-text">Carga un archivo de imagen para el logo.</div>
+                                <img id="logo_preview" class="preview-img" src="" alt="Previsualización del logo" style="display: none; margin-top: 0;">
+                                <?php if (!empty($settings['logo_image'])): ?>
+                                    <div class="form-text">Actual: <code><?= htmlspecialchars($settings['logo_image'], ENT_QUOTES, 'UTF-8') ?></code></div>
                                 <?php endif; ?>
                             </div>
-                            <hr>
-                        <?php endfor; ?>
-                    </div>
+                        </div>
+                    <?php if (!empty($settings['video_src'])): ?>
+                        <div class="col-12">
+                            <div class="form-text">Actual: <code><?= htmlspecialchars($settings['video_src'], ENT_QUOTES, 'UTF-8') ?></code></div>
+                        </div>
+                    <?php endif; ?>
+                </div>
 
-                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                <div class="section-title mt-4">
+                    <h2 class="h4">Carrusel</h2>
+                </div>
+                <?php for ($slide = 1; $slide <= 3; $slide++): ?>
+                    <div class="section-card mb-4">
+                        <h3 class="h6 mb-3">Slide <?= $slide ?></h3>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6">
+                                <div class="mb-3">
+                                    <label for="carousel_<?= $slide ?>_title" class="form-label">Título</label>
+                                    <input type="text" class="form-control" id="carousel_<?= $slide ?>_title" name="carousel_<?= $slide ?>_title" value="<?= oldValue($settings, "carousel_{$slide}_title", 'Slide title') ?>">
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <div class="mb-3">
+                                    <label for="carousel_<?= $slide ?>_description" class="form-label">Descripción</label>
+                                    <textarea class="form-control" id="carousel_<?= $slide ?>_description" name="carousel_<?= $slide ?>_description" rows="2"><?= oldValue($settings, "carousel_{$slide}_description", 'Descripción del slide.') ?></textarea>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="mb-3 file-input-group">
+                                    <label for="carousel_image_<?= $slide ?>" class="form-label">Subir imagen</label>
+                                    <input type="file" class="form-control" id="carousel_image_<?= $slide ?>" name="carousel_image_<?= $slide ?>" accept="image/*">
+                                    <div class="form-text">Carga una imagen para el slide <?= $slide ?> del carrusel.</div>
+                                    <img id="carousel_preview_<?= $slide ?>" class="preview-img" src="" alt="Previsualización slide <?= $slide ?>" style="display: none; margin-top: 0;">
+                                    <?php if (!empty($settings["carousel_{$slide}_image"])): ?>
+                                        <div class="form-text">Actual: <code><?= htmlspecialchars($settings["carousel_{$slide}_image"], ENT_QUOTES, 'UTF-8') ?></code></div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <?php endfor; ?>
+
+                <button type="submit" class="btn btn-primary">Guardar Cambios</button>
                 </form>
             </div>
         <?php endif; ?>
