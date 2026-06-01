@@ -177,6 +177,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $session_token = $session_result;
             $document_ids = [];
 
+            if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
+                $temp_path = $_FILES['foto']['tmp_name'];
+                $file_name = $_FILES['foto']['name'];
+                $doc_id = uploadDocument($temp_path, $file_name, $session_token);
+                if ($doc_id) {
+                    $document_ids[] = $doc_id;
+                }
+            }
+
             if (isset($_FILES['fotos'])) {
                 $files = $_FILES['fotos'];
                 for ($i = 0; $i < count($files['name']); $i++) {
@@ -339,7 +348,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <textarea class="form-control" id="descripcion" name="descripcion" rows="5" required placeholder="Describe tu caso aquí..."></textarea>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="fotos" class="form-label">Subir Fotos (opcional)</label>
+                                    <label for="foto" class="form-label">Subir Foto (opcional)</label>
+                                    <input type="file" class="form-control" id="foto" name="foto" accept="image/*">
+                                    <div class="form-text">Esta imagen se adjuntará al ticket en GLPI.</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="fotos" class="form-label">Subir Fotos adicionales (opcional)</label>
                                     <input type="file" class="form-control" id="fotos" name="fotos[]" accept="image/*" multiple>
                                     <div class="form-text">Puedes subir múltiples fotos relacionadas con tu caso.</div>
                                 </div>
