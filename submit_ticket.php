@@ -3,8 +3,8 @@
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
 $basePath = rtrim(dirname($_SERVER['PHP_SELF']), '/\\');
 $glpi_url = sprintf('%s://%s%s/glpi/apirest.php/', $protocol, $_SERVER['HTTP_HOST'], $basePath);
-$api_token = 'JpntS0vZcb3aC70dArrgSq6whHXRNEsPqrYl86Y5'; // Token de API de GLPI
-$app_token = 'qOxi7Q53U1YA3FXL8DgxVg7RywEwbssfKuy2UPFz'; // App token de GLPI
+$api_token = 'IltrCDj1EEMcpLbFQt7jfJl4iB8sb95YChqqOO4n'; // Token de API de GLPI
+$app_token = 'cfoFeh3QF9RWdI9DSu7kWb2IfHuY7ZVnJ8vM3Xtt'; // App token de GLPI
 
 function initSession() {
     global $glpi_url, $api_token, $app_token;
