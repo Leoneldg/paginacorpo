@@ -51,7 +51,7 @@ for ($i = 1; $i <= 3; $i++) {
         <div class="nav-links" id="navLinks">
             <a href="quienes_somos.html" class="nav-link">¿Quiénes Somos?</a>
             <a href="At_Ciudadano.php" class="nav-link">Atención al Propietario</a>
-            <a href="https://corpo.capital" class="btn-suite" target="_blank" rel="noopener">Corpo Suite</a>
+            <a href="https://corpo.capital/suite/portal.php" class="btn-suite" target="_blank" rel="noopener">Corpo Suite</a>
         </div>
         <button class="nav-hamburger" id="navToggle" aria-label="Menú">
             <span></span><span></span>
