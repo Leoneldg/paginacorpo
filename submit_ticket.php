@@ -147,6 +147,8 @@ function createTicket($title, $content, $requester_name, $document_ids = [], $se
 }
 
 $message = '';
+$success = false;
+$ticketId = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $requester_name = trim($_POST['nombre_completo'] ?? '');
@@ -212,7 +214,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $result = createTicket($title, $content, $requester_name, $document_ids, $session_token);
 
             if ($result['http_code'] === 201) {
-                $message = 'Caso enviado exitosamente. ID del ticket: ' . ($result['response']['id'] ?? 'Desconocido');
+                $ticketId = $result['response']['id'] ?? null;
+                $message = 'Caso enviado exitosamente. ID del ticket: ' . ($ticketId ?? 'Desconocido');
+                $success = true;
             } else {
                 $message = 'Error al enviar el caso: ' . json_encode($result['response']);
             }
@@ -283,32 +287,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="container">
                 <div class="row justify-content-center">
                     <div class="col-md-8">
-                        <?php if ($message): ?>
-                            <div class="alert alert-info" role="alert">
-                                <?= htmlspecialchars($message, ENT_QUOTES, 'UTF-8') ?>
+                        <?php if ($success): ?>
+                            <div class="d-flex justify-content-center align-items-center vh-75">
+                                <div class="card shadow-sm border-0 w-100" style="max-width: 560px;">
+                                    <div class="card-body text-center py-5">
+                                        <div class="mb-4">
+                                            <i class="bx bx-check-circle text-success" style="font-size: 3rem;"></i>
+                                        </div>
+                                        <h3 class="card-title mb-3">Caso enviado exitosamente</h3>
+                                        <p class="card-text fs-5">ID del ticket: <strong><?= htmlspecialchars($ticketId ?? 'Desconocido', ENT_QUOTES, 'UTF-8') ?></strong></p>
+                                        <p class="text-muted">Serás redirigido a la página principal en unos segundos.</p>
+                                    </div>
+                                </div>
                             </div>
-                        <?php endif; ?>
+                            <script>
+                                setTimeout(() => { window.location.href = 'index.php'; }, 4500);
+                            </script>
+                        <?php else: ?>
+                            <?php if ($message): ?>
+                                <div class="alert alert-info" role="alert">
+                                    <?= htmlspecialchars($message, ENT_QUOTES, 'UTF-8') ?>
+                                </div>
+                            <?php endif; ?>
 
-                        <form method="post" enctype="multipart/form-data">
-                            <div class="mb-3">
-                                <label for="nombre" class="form-label">Nombre *</label>
-                                <input type="text" class="form-control" id="nombre" name="nombre" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="apellido" class="form-label">Apellido *</label>
-                                <input type="text" class="form-control" id="apellido" name="apellido" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="descripcion" class="form-label">Descripción del Caso *</label>
-                                <textarea class="form-control" id="descripcion" name="descripcion" rows="5" required placeholder="Describe tu caso aquí..."></textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label for="fotos" class="form-label">Subir Fotos (opcional)</label>
-                                <input type="file" class="form-control" id="fotos" name="fotos[]" accept="image/*" multiple>
-                                <div class="form-text">Puedes subir múltiples fotos relacionadas con tu caso.</div>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Enviar Caso</button>
-                        </form>
+                            <form method="post" enctype="multipart/form-data">
+                                <div class="mb-3">
+                                    <label for="nombre" class="form-label">Nombre *</label>
+                                    <input type="text" class="form-control" id="nombre" name="nombre" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="apellido" class="form-label">Apellido *</label>
+                                    <input type="text" class="form-control" id="apellido" name="apellido" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="descripcion" class="form-label">Descripción del Caso *</label>
+                                    <textarea class="form-control" id="descripcion" name="descripcion" rows="5" required placeholder="Describe tu caso aquí..."></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="fotos" class="form-label">Subir Fotos (opcional)</label>
+                                    <input type="file" class="form-control" id="fotos" name="fotos[]" accept="image/*" multiple>
+                                    <div class="form-text">Puedes subir múltiples fotos relacionadas con tu caso.</div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Enviar Caso</button>
+                            </form>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
