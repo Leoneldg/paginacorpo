@@ -383,6 +383,32 @@
         resize: vertical;
         min-height: 120px;
     }
+    .form-group input[type="file"] {
+        font-family: var(--font-body) !important;
+        font-size: 0.88rem !important;
+        color: var(--texto) !important;
+        background: var(--gris-10) !important;
+        border: 1px solid var(--gris-20) !important;
+        border-radius: 2px !important;
+        padding: 12px 16px !important;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .form-group input[type="file"]:focus {
+        border-color: var(--azul-mid) !important;
+        box-shadow: 0 0 0 3px rgba(21,96,189,0.08) !important;
+    }
+    .form-group input[type="file"]::-webkit-file-upload-button {
+        background: transparent;
+        border: 1px solid var(--gris-20);
+        border-radius: 2px;
+        padding: 0.65rem 1rem;
+        margin-right: 8px;
+        color: var(--texto);
+        cursor: pointer;
+    }
     .form-group select {
         cursor: pointer;
         appearance: none;
