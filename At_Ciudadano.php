@@ -798,6 +798,13 @@
                             <textarea id="mensaje" name="mensaje" placeholder="Describe tu solicitud con el mayor detalle posible..." required></textarea>
                         </div>
                     </div>
+                    <div class="form-row">
+                        <div class="form-group full">
+                            <label for="foto">Subir foto (opcional)</label>
+                            <input type="file" id="foto" name="foto" accept="image/*">
+                            <span class="form-help">Esta imagen se adjuntará al ticket en GLPI.</span>
+                        </div>
+                    </div>
                     <button type="submit" class="btn-submit">Enviar Solicitud</button>
                 </form>
             </div>
