@@ -240,6 +240,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="bootstrap-5.3.6-dist/css/bootstrap.min.css" rel='stylesheet'>
 </head>
 <body>
+    <?php if ($success): ?>
+        <div class="d-flex justify-content-center align-items-center min-vh-100" style="background: linear-gradient(180deg, #eaf2ff 0%, #f7fbff 100%);">
+            <div class="card shadow-lg border-0" style="max-width: 640px; width: 100%; background: rgba(255,255,255,0.97);">
+                <div class="card-body text-center py-5 px-4">
+                    <div class="mb-4">
+                        <i class="bx bx-check-circle" style="font-size: 4rem; color: #1f66d0;"></i>
+                    </div>
+                    <h1 class="h3 fw-semibold mb-3" style="color: #0f306f;">Caso enviado exitosamente</h1>
+                    <p class="mb-3 text-secondary" style="font-size: 1.05rem;">ID del ticket: <strong><?= htmlspecialchars($ticketId ?? 'Desconocido', ENT_QUOTES, 'UTF-8') ?></strong></p>
+                    <p class="text-muted mb-0">Redirigiendo a la página principal en unos segundos...</p>
+                </div>
+            </div>
+        </div>
+        <script>setTimeout(() => { window.location.href = 'index.php'; }, 4500);</script>
+    <?php else: ?>
 
     <header class="header" id="Inicio">
         <nav class="navbar navbar-expand-lg bg-body-transparent fixed-top " id="navbar">
@@ -364,5 +379,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script src="script.js"></script>
     <script src="https://static.elfsight.com/platform/platform.js" async></script>
     <script src="bootstrap-5.3.6-dist/js/bootstrap.bundle.min.js"></script>
+    <?php endif; ?>
 </body>
 </html>
