@@ -1,6 +1,8 @@
 <?php
 // Configuración de GLPI API
-$glpi_url = 'http://localhost/glpi/apirest.php/'; // URL de la instalación de GLPI
+$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+$basePath = rtrim(dirname($_SERVER['PHP_SELF']), '/\\');
+$glpi_url = sprintf('%s://%s%s/glpi/apirest.php/', $protocol, $_SERVER['HTTP_HOST'], $basePath);
 $api_token = 'JpntS0vZcb3aC70dArrgSq6whHXRNEsPqrYl86Y5'; // Token de API de GLPI
 $app_token = 'qOxi7Q53U1YA3FXL8DgxVg7RywEwbssfKuy2UPFz'; // App token de GLPI
 
@@ -88,10 +90,9 @@ function callGlpiApi($endpoint, $method = 'GET', $data = null, $files = null, $s
     if ($method === 'POST') {
         curl_setopt($ch, CURLOPT_POST, true);
         if ($files) {
-            // Para archivos, usar multipart/form-data
+            // Para archivos, usar multipart/form-data; cURL fijará la cabecera con boundary automáticamente.
             curl_setopt($ch, CURLOPT_POSTFIELDS, $files);
             $headers = array_diff($headers, ['Content-Type: application/json']);
-            $headers[] = 'Content-Type: multipart/form-data';
             curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         } elseif ($data) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
@@ -149,10 +150,22 @@ $message = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $requester_name = trim($_POST['nombre_completo'] ?? '');
-    $descripcion = trim($_POST['descripcion'] ?? '');
+    if (empty($requester_name) && !empty($_POST['nombre'])) {
+        $requester_name = trim($_POST['nombre'] . ' ' . trim($_POST['apellido'] ?? ''));
+    }
 
-    if (empty($descripcion) || empty($requester_name)) {
-        $message = 'Todos los campos son obligatorios.';
+    $descripcion = trim($_POST['descripcion'] ?? '');
+    $mensaje = trim($_POST['mensaje'] ?? '');
+    $content_text = $descripcion ?: $mensaje;
+
+    $tipo = trim($_POST['tipo'] ?? '');
+    $asunto = trim($_POST['asunto'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $telefono = trim($_POST['telefono'] ?? '');
+    $cedula = trim($_POST['cedula'] ?? '');
+
+    if (empty($requester_name) || empty($content_text)) {
+        $message = 'Todos los campos obligatorios deben completarse.';
     } else {
         // Iniciar sesión en GLPI
         $session_result = initSession();
@@ -176,8 +189,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
-            $title = 'Caso de Atención al Propietario - ' . $requester_name;
-            $result = createTicket($title, $descripcion, $requester_name, $document_ids, $session_token);
+            $content = '';
+            if ($tipo) {
+                $content .= "Tipo de solicitud: {$tipo}\n";
+            }
+            if ($asunto) {
+                $content .= "Asunto: {$asunto}\n";
+            }
+            $content .= $content_text;
+            if ($email) {
+                $content .= "\nCorreo: {$email}";
+            }
+            if ($telefono) {
+                $content .= "\nTeléfono: {$telefono}";
+            }
+            if ($cedula) {
+                $content .= "\nCédula: {$cedula}";
+            }
+
+            $title = $asunto ?: 'Caso de Atención al Ciudadano';
+            $title .= ' - ' . $requester_name;
+            $result = createTicket($title, $content, $requester_name, $document_ids, $session_token);
 
             if ($result['http_code'] === 201) {
                 $message = 'Caso enviado exitosamente. ID del ticket: ' . ($result['response']['id'] ?? 'Desconocido');

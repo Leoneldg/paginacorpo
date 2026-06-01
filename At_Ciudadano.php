@@ -753,10 +753,11 @@
             <div class="form-card reveal-right" data-delay="0">
                 <h3>Formulario de Solicitud</h3>
                 <p class="form-card-sub">Todos los campos marcados con * son obligatorios</p>
+                <form action="submit_ticket.php" method="post" enctype="multipart/form-data">
                     <div class="form-row">
                         <div class="form-group">
                             <label for="nombre">Nombre Completo *</label>
-                            <input type="text" id="nombre" name="nombre" placeholder="Ej: Juan Pérez" required>
+                            <input type="text" id="nombre" name="nombre_completo" placeholder="Ej: Juan Pérez" required>
                         </div>
                         <div class="form-group">
                             <label for="cedula">Cédula de Identidad *</label>
@@ -797,7 +798,8 @@
                             <textarea id="mensaje" name="mensaje" placeholder="Describe tu solicitud con el mayor detalle posible..." required></textarea>
                         </div>
                     </div>
-                    <button type="button" class="btn-submit" onclick="alert('Solicitud enviada correctamente. Nos comunicaremos contigo pronto.')">Enviar Solicitud</button>
+                    <button type="submit" class="btn-submit">Enviar Solicitud</button>
+                </form>
             </div>
         </div>
     </div>
