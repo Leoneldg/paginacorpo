@@ -3,9 +3,9 @@
 Para integrar con GLPI, necesitas configurar los siguientes valores en `submit_ticket.php`:
 
 ```php
-$glpi_url = 'http://localhost/glpi/apirest.php'; // URL de tu instalación de GLPI
-$api_token = 'TU_API_TOKEN_AQUI'; // Token de API generado en GLPI
-$app_token = 'TU_APP_TOKEN_AQUI'; // App Token si lo usas
+$glpi_url = 'https://corpo.capital/glpi/apirest.php/'; // URL de tu instalación de GLPI
+$api_token = 'IltrCDj1EEMcpLbFQt7jfJl4iB8sb95YChqqOO4n'; // Token de API generado en GLPI
+$app_token = 'cfoFeh3QF9RWdI9DSu7kWb2IfHuY7ZVnJ8vM3Xtt'; // App Token si lo usas
 ```
 
 ## Pasos para obtener tokens en GLPI:
