@@ -2,7 +2,13 @@
 // Configuración de GLPI API
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
 $basePath = rtrim(dirname($_SERVER['PHP_SELF']), '/\\');
-$glpi_url = sprintf('%s://%s%s/glpi/apirest.php/', $protocol, $_SERVER['HTTP_HOST'], $basePath);
+// Normalize host: remove leading www. so certificate subject names like 'corpo.capital' match
+$host = 
+    (isset($_SERVER['HTTP_HOST']) && is_string($_SERVER['HTTP_HOST']))
+        ? $_SERVER['HTTP_HOST']
+        : 'localhost';
+$host_no_www = preg_replace('/^www\./i', '', $host);
+$glpi_url = sprintf('%s://%s%s/glpi/apirest.php/', $protocol, $host_no_www, $basePath);
 $api_token = 'IltrCDj1EEMcpLbFQt7jfJl4iB8sb95YChqqOO4n'; // Token de API de GLPI
 $app_token = 'cfoFeh3QF9RWdI9DSu7kWb2IfHuY7ZVnJ8vM3Xtt'; // App token de GLPI
 
