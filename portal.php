@@ -1,0 +1,451 @@
+<?php
+session_start();
+require_once __DIR__ . '/db/database.php';
+
+$message = '';
+
+if (isset($_GET['logout'])) {
+    session_destroy();
+    header('Location: portal.php');
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
+    $pdo = getDatabaseConnection();
+    $username = trim($_POST['username'] ?? '');
+    $password = trim($_POST['password'] ?? '');
+    $hashedPassword = md5($password);
+
+    $stmt = $pdo->prepare('SELECT id FROM users WHERE username = :username AND password = :password');
+    $stmt->execute([':username' => $username, ':password' => $hashedPassword]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($user) {
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['username'] = $username;
+        header('Location: portal.php');
+        exit;
+    } else {
+        $message = 'Usuario o contraseña incorrectos.';
+    }
+}
+
+$isLoggedIn = isset($_SESSION['user_id']);
+
+if ($isLoggedIn && $_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['login'])) {
+    try {
+        $pdo = getDatabaseConnection();
+        $settings = getSettings($pdo);
+    } catch (PDOException $e) {
+        $message = 'Error de conexión a la base de datos: ' . $e->getMessage();
+    }
+
+    if (empty($message)) {
+        try {
+            $uploadDir = __DIR__ . '/uploads';
+            if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
+                throw new RuntimeException('No se pudo crear el directorio de uploads: ' . $uploadDir);
+            }
+
+            $errors = [];
+
+            $currentVideoSrc = $settings['video_src'] ?? 'videos/torres.mp4';
+            $videoError = '';
+            $videoSrc = saveUploadedVideo('video_file', $currentVideoSrc, $uploadDir, $videoError);
+            if ($videoError) {
+                $errors[] = $videoError;
+            }
+            saveSetting($pdo, 'video_src', $videoSrc);
+
+            $currentLogo = $settings['logo_image'] ?? 'img/img/logocorpo.png';
+            $logoError = '';
+            $logoImage = saveUploadedImage('logo_image_file', $currentLogo, $uploadDir, $logoError);
+            if ($logoError) {
+                $errors[] = $logoError;
+            }
+            saveSetting($pdo, 'logo_image', $logoImage);
+
+            $carouselDefaults = [
+        1 => [
+            'image' => 'img/img/fundasalud.jpg',
+            'title' => 'First slide label',
+            'description' => 'Some representative placeholder content for the first slide.',
+        ],
+        2 => [
+            'image' => 'img/img/gabinete.jpg',
+            'title' => 'Second slide label',
+            'description' => 'Some representative placeholder content for the second slide.',
+        ],
+        3 => [
+            'image' => 'img/img/resumen.jpg',
+            'title' => 'Third slide label',
+            'description' => 'Some representative placeholder content for the third slide.',
+        ],
+    ];
+
+    for ($slide = 1; $slide <= 3; $slide++) {
+        $slideTitle = trim($_POST["carousel_{$slide}_title"] ?? $carouselDefaults[$slide]['title']);
+        $slideDescription = trim($_POST["carousel_{$slide}_description"] ?? $carouselDefaults[$slide]['description']);
+        $currentCarouselImage = $settings["carousel_{$slide}_image"] ?? $carouselDefaults[$slide]['image'];
+        $slideError = '';
+        $carouselImage = saveUploadedImage("carousel_image_{$slide}", $currentCarouselImage, $uploadDir, $slideError);
+        if ($slideError) {
+            $errors[] = "Slide {$slide}: " . $slideError;
+        }
+
+        saveSetting($pdo, "carousel_{$slide}_title", $slideTitle);
+        saveSetting($pdo, "carousel_{$slide}_description", $slideDescription);
+        saveSetting($pdo, "carousel_{$slide}_image", $carouselImage);
+    }
+
+    if (count($errors) === 0) {
+        $message = 'Contenido actualizado correctamente.';
+    } else {
+        $message = implode(' ', $errors);
+    }
+
+    $settings = getSettings($pdo);
+        } catch (PDOException $e) {
+            $message = 'Error al guardar el contenido: ' . $e->getMessage();
+        }
+    }
+}
+
+if ($isLoggedIn) {
+    try {
+        $pdo = getDatabaseConnection();
+        $settings = getSettings($pdo);
+    } catch (PDOException $e) {
+        $message = 'Error de conexión a la base de datos: ' . $e->getMessage();
+        $settings = [];
+    }
+}
+
+function oldValue(array $data, string $key, string $default = ''): string
+{
+    return htmlspecialchars($data[$key] ?? $default, ENT_QUOTES, 'UTF-8');
+}
+
+function getUploadErrorMessage(int $errorCode): string
+{
+    switch ($errorCode) {
+        case UPLOAD_ERR_INI_SIZE:
+        case UPLOAD_ERR_FORM_SIZE:
+            return 'El archivo excede el tamaño máximo permitido por el servidor o el formulario.';
+        case UPLOAD_ERR_PARTIAL:
+            return 'La subida se interrumpió antes de completarse.';
+        case UPLOAD_ERR_NO_FILE:
+            return 'No se seleccionó ningún archivo.';
+        case UPLOAD_ERR_NO_TMP_DIR:
+            return 'Falta el directorio temporal en el servidor.';
+        case UPLOAD_ERR_CANT_WRITE:
+            return 'No se pudo escribir el archivo en el disco.';
+        case UPLOAD_ERR_EXTENSION:
+            return 'La subida fue detenida por una extensión de PHP.';
+        default:
+            return 'Error desconocido al subir el archivo.';
+    }
+}
+
+function saveUploadedImage(string $fieldName, string $currentValue, string $uploadDir, ?string &$error = null): string
+{
+    $error = '';
+    if (!isset($_FILES[$fieldName]) || $_FILES[$fieldName]['error'] === UPLOAD_ERR_NO_FILE) {
+        return $currentValue;
+    }
+
+    if ($_FILES[$fieldName]['error'] !== UPLOAD_ERR_OK) {
+        $error = getUploadErrorMessage($_FILES[$fieldName]['error']);
+        return $currentValue;
+    }
+
+    $file = $_FILES[$fieldName];
+    if (!is_uploaded_file($file['tmp_name'])) {
+        $error = 'El archivo temporal no es un archivo subido válido.';
+        return $currentValue;
+    }
+
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    $mime = $finfo->file($file['tmp_name']);
+    $allowed = [
+        'image/jpeg' => 'jpg',
+        'image/pjpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/x-png' => 'png',
+        'image/gif' => 'gif',
+        'image/webp' => 'webp',
+    ];
+
+    if (!isset($allowed[$mime])) {
+        $error = 'Tipo de imagen no permitido: ' . htmlspecialchars($mime, ENT_QUOTES, 'UTF-8');
+        return $currentValue;
+    }
+
+    $extension = $allowed[$mime];
+    $fileName = sprintf('%s_%s.%s', $fieldName, uniqid(), $extension);
+    $destination = rtrim($uploadDir, '/\\') . DIRECTORY_SEPARATOR . $fileName;
+
+    if (!move_uploaded_file($file['tmp_name'], $destination)) {
+        $lastMove = error_get_last();
+        if (!copy($file['tmp_name'], $destination)) {
+            $lastCopy = error_get_last();
+            $moveMsg = $lastMove['message'] ?? 'sin mensaje';
+            $copyMsg = $lastCopy['message'] ?? 'sin mensaje';
+            $error = 'No se pudo mover el archivo subido al directorio de destino. move_uploaded_file: ' . $moveMsg . ' | copy: ' . $copyMsg;
+            return $currentValue;
+        }
+    }
+
+    return 'uploads/' . $fileName;
+}
+
+function saveUploadedVideo(string $fieldName, string $currentValue, string $uploadDir, ?string &$error = null): string
+{
+    $error = '';
+    if (!isset($_FILES[$fieldName]) || $_FILES[$fieldName]['error'] === UPLOAD_ERR_NO_FILE) {
+        return $currentValue;
+    }
+
+    if ($_FILES[$fieldName]['error'] !== UPLOAD_ERR_OK) {
+        $error = getUploadErrorMessage($_FILES[$fieldName]['error']);
+        return $currentValue;
+    }
+
+    $file = $_FILES[$fieldName];
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    $mime = $finfo->file($file['tmp_name']);
+    $allowed = [
+        'video/mp4' => 'mp4',
+        'video/webm' => 'webm',
+        'video/ogg' => 'ogg',
+    ];
+
+    if (!isset($allowed[$mime])) {
+        $error = 'Tipo de video no permitido: ' . htmlspecialchars($mime, ENT_QUOTES, 'UTF-8');
+        return $currentValue;
+    }
+
+    $extension = $allowed[$mime];
+    $fileName = sprintf('%s_%s.%s', $fieldName, uniqid(), $extension);
+    $destination = rtrim($uploadDir, '/\\') . DIRECTORY_SEPARATOR . $fileName;
+
+    if (!move_uploaded_file($file['tmp_name'], $destination) && !copy($file['tmp_name'], $destination)) {
+        $error = 'No se pudo mover el archivo subido al directorio de destino.';
+        return $currentValue;
+    }
+
+    return 'uploads/' . $fileName;
+}
+?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal de Administración - CorpoCapital</title>
+    <link href="bootstrap-5.3.6-dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            min-height: 100vh;
+            margin: 0;
+            background: radial-gradient(circle at top, #e9f0ff 0%, #f7fbff 45%, #ffffff 100%);
+            color: #1f2937;
+        }
+        .portal-card {
+            max-width: 1140px;
+            margin: 0 auto;
+            padding: 24px 16px 48px;
+        }
+        .form-section {
+            background: #ffffff;
+            border-radius: 24px;
+            padding: 28px;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+        }
+        .section-card {
+            background: #f9fbff;
+            border-radius: 18px;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            padding: 22px;
+        }
+        .section-title {
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+            padding-bottom: 0.75rem;
+        }
+        .notice-box {
+            background: #eef5ff;
+            padding: 24px;
+            margin-bottom: 24px;
+            border-radius: 18px;
+            border: 1px solid rgba(59, 130, 246, 0.15);
+        }
+        .notice-box h1 {
+            margin-bottom: 0.75rem;
+        }
+        .alert {
+            border-radius: 18px;
+        }
+        .preview-img {
+            max-width: 180px;
+            max-height: 180px;
+            display: block;
+            border-radius: 16px;
+            object-fit: cover;
+            margin-top: 0.75rem;
+            box-shadow: 0 14px 24px rgba(15, 23, 42, 0.08);
+        }
+        .btn-primary {
+            min-width: 180px;
+        }
+        .file-input-group .form-text {
+            margin-top: 0.35rem;
+        }
+        @media (max-width: 767.98px) {
+            .portal-card {
+                padding: 18px 12px 32px;
+            }
+            .form-section {
+                padding: 20px;
+            }
+            .section-card {
+                padding: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container portal-card">
+        <?php if (!$isLoggedIn): ?>
+            <div class="form-section">
+                <h2 class="h5">Iniciar Sesión</h2>
+                <?php if ($message): ?>
+                    <div class="alert alert-danger" role="alert"><?= htmlspecialchars($message, ENT_QUOTES, 'UTF-8') ?></div>
+                <?php endif; ?>
+                <form method="post">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Usuario</label>
+                        <input type="text" class="form-control" id="username" name="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Contraseña</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    <button type="submit" name="login" class="btn btn-primary">Iniciar Sesión</button>
+                </form>
+            </div>
+        <?php else: ?>
+            <div class="notice-box">
+                <h1 class="h4">Portal de administración</h1>
+                <p>Modifica el video de fondo, el logo y otros contenidos del sitio.</p>
+                <p>Los cambios se guardan en la base de datos y se reflejarán en <code>index.php</code>.</p>
+                <p><a href="?logout=1" class="btn btn-sm btn-outline-danger">Cerrar Sesión</a></p>
+            </div>
+
+            <?php if ($message): ?>
+                <div class="alert alert-success" role="alert"><?= htmlspecialchars($message, ENT_QUOTES, 'UTF-8') ?></div>
+            <?php endif; ?>
+
+            <div class="form-section section-card">
+                <form method="post" enctype="multipart/form-data">
+                    <div class="section-title">
+                        <h2 class="h4">Configuración global</h2>
+                    </div>
+                    <div class="row g-4 align-items-end">
+                        <div class="col-12 col-lg-6">
+                            <div class="mb-3">
+                                <label for="video_file" class="form-label">Subir video inicial</label>
+                                <input type="file" class="form-control" id="video_file" name="video_file" accept="video/mp4,video/webm,video/ogg">
+                                <div class="form-text">Carga un archivo de video MP4, WEBM u OGG para el video de inicio.</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 file-input-group">
+                            <div class="mb-3">
+                                <label for="logo_image_file" class="form-label">Subir imagen del logo</label>
+                                <input type="file" class="form-control" id="logo_image_file" name="logo_image_file" accept="image/*">
+                                <div class="form-text">Carga un archivo de imagen para el logo.</div>
+                                <img id="logo_preview" class="preview-img" src="" alt="Previsualización del logo" style="display: none; margin-top: 0;">
+                                <?php if (!empty($settings['logo_image'])): ?>
+                                    <div class="form-text">Actual: <code><?= htmlspecialchars($settings['logo_image'], ENT_QUOTES, 'UTF-8') ?></code></div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php if (!empty($settings['video_src'])): ?>
+                        <div class="col-12">
+                            <div class="form-text">Actual: <code><?= htmlspecialchars($settings['video_src'], ENT_QUOTES, 'UTF-8') ?></code></div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+                <div class="section-title mt-4">
+                    <h2 class="h4">Carrusel</h2>
+                </div>
+                <?php for ($slide = 1; $slide <= 3; $slide++): ?>
+                    <div class="section-card mb-4">
+                        <h3 class="h6 mb-3">Slide <?= $slide ?></h3>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6">
+                                <div class="mb-3">
+                                    <label for="carousel_<?= $slide ?>_title" class="form-label">Título</label>
+                                    <input type="text" class="form-control" id="carousel_<?= $slide ?>_title" name="carousel_<?= $slide ?>_title" value="<?= oldValue($settings, "carousel_{$slide}_title", 'Slide title') ?>">
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <div class="mb-3">
+                                    <label for="carousel_<?= $slide ?>_description" class="form-label">Descripción</label>
+                                    <textarea class="form-control" id="carousel_<?= $slide ?>_description" name="carousel_<?= $slide ?>_description" rows="2"><?= oldValue($settings, "carousel_{$slide}_description", 'Descripción del slide.') ?></textarea>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="mb-3 file-input-group">
+                                    <label for="carousel_image_<?= $slide ?>" class="form-label">Subir imagen</label>
+                                    <input type="file" class="form-control" id="carousel_image_<?= $slide ?>" name="carousel_image_<?= $slide ?>" accept="image/*">
+                                    <div class="form-text">Carga una imagen para el slide <?= $slide ?> del carrusel.</div>
+                                    <img id="carousel_preview_<?= $slide ?>" class="preview-img" src="" alt="Previsualización slide <?= $slide ?>" style="display: none; margin-top: 0;">
+                                    <?php if (!empty($settings["carousel_{$slide}_image"])): ?>
+                                        <div class="form-text">Actual: <code><?= htmlspecialchars($settings["carousel_{$slide}_image"], ENT_QUOTES, 'UTF-8') ?></code></div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <?php endfor; ?>
+
+                <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </form>
+            </div>
+        <?php endif; ?>
+    </div>
+
+    <script src="bootstrap-5.3.6-dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function previewImage(inputId, previewId) {
+            const input = document.getElementById(inputId);
+            const preview = document.getElementById(previewId);
+
+            input.addEventListener('change', function(event) {
+                const file = event.target.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        preview.src = e.target.result;
+                        preview.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    preview.style.display = 'none';
+                }
+            });
+        }
+
+        // Previsualización para el logo
+        previewImage('logo_image_file', 'logo_preview');
+
+        // Previsualización para las imágenes del carrusel
+        for (let i = 1; i <= 3; i++) {
+            previewImage('carousel_image_' + i, 'carousel_preview_' + i);
+        }
+    </script>
+</body>
+</html>
